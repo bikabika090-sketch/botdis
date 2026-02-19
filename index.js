@@ -1,3 +1,5 @@
+require("dotenv").config();
+
 const {
     Client,
     GatewayIntentBits,
@@ -14,20 +16,24 @@ const client = new Client({
     intents: [
         GatewayIntentBits.Guilds,
         GatewayIntentBits.GuildMessages,
-        GatewayIntentBits.GuildMembers
+        GatewayIntentBits.GuildMembers,
+        GatewayIntentBits.MessageContent
     ]
 });
 
-const TOKEN = "MTQ3MzgyNjY3ODM3NDUzMTM0Mg.G9bGTO.Vh6MR6HXqeyMje7JPyKoltHpzxeS01sx3XOSwI";
-const OWNER_ID = "1254681345406402621"; // ID của nhoemm_
+const OWNER_ID = "1254681345406402621";
 
 client.once("ready", () => {
     console.log(`🔥 Bot đã online: ${client.user.tag}`);
 });
 
+/* =========================
+   INTERACTION HANDLER
+========================= */
+
 client.on("interactionCreate", async interaction => {
 
-    // ===== LỆNH /store =====
+    /* ===== SLASH COMMAND ===== */
     if (interaction.isChatInputCommand()) {
 
         if (interaction.commandName === "store") {
@@ -58,15 +64,27 @@ client.on("interactionCreate", async interaction => {
         }
     }
 
-    // ===== CHỌN DỊCH VỤ =====
+    /* ===== SELECT MENU ===== */
     if (interaction.isStringSelectMenu()) {
 
         if (interaction.customId === "select_service") {
 
             const service = interaction.values[0];
 
+            // tránh tạo trùng ticket
+            const existingChannel = interaction.guild.channels.cache.find(
+                c => c.name === `ticket-${interaction.user.id}`
+            );
+
+            if (existingChannel) {
+                return interaction.reply({
+                    content: `⚠ Bạn đã có ticket: ${existingChannel}`,
+                    ephemeral: true
+                });
+            }
+
             const channel = await interaction.guild.channels.create({
-                name: `ticket-${interaction.user.username}`,
+                name: `ticket-${interaction.user.id}`,
                 type: ChannelType.GuildText,
                 permissionOverwrites: [
                     {
@@ -97,20 +115,19 @@ client.on("interactionCreate", async interaction => {
 👤 Khách hàng: ${interaction.user}
 🛒 Dịch vụ: **${service.toUpperCase()}**
 📌 Owner: <@${OWNER_ID}>
-`);
+                `);
 
             const row = new ActionRowBuilder().addComponents(
                 new ButtonBuilder()
                     .setCustomId("close_ticket")
-                    .setLabel("Close")
+                    .setLabel("🔒 Close Ticket")
                     .setStyle(ButtonStyle.Danger)
             );
 
             await channel.send({
                 content: `<@${OWNER_ID}>`,
                 embeds: [embed],
-                components: [row],
-                allowedMentions: { parse: ["users"] }
+                components: [row]
             });
 
             await interaction.reply({
@@ -120,7 +137,7 @@ client.on("interactionCreate", async interaction => {
         }
     }
 
-    // ===== CLOSE TICKET =====
+    /* ===== CLOSE BUTTON ===== */
     if (interaction.isButton()) {
 
         if (interaction.customId === "close_ticket") {
@@ -136,4 +153,8 @@ client.on("interactionCreate", async interaction => {
     }
 });
 
-client.login('MTQ3MzgyNjY3ODM3NDUzMTM0Mg.G9bGTO.Vh6MR6HXqeyMje7JPyKoltHpzxeS01sx3XOSwI');
+/* =========================
+   LOGIN BOT
+========================= */
+
+client.login(process.env.TOKEN);
